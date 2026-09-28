@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Regenerable intermediates (rebuilt from data/raw/ by the steps in the README)
+data/processed/*.pkl

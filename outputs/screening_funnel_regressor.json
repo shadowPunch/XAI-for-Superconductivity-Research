@@ -1,0 +1,52 @@
+{
+  "random_split": {
+    "n_train": 14816,
+    "n_test": 1647,
+    "msle_tc": 0.12133368728449867,
+    "r2_arcsinh_tc": 0.9232923306609075
+  },
+  "leave_one_family_out": {
+    "Bismuthates": {
+      "n_train": 14916,
+      "n_test": 1547,
+      "msle_tc": 0.376174870507841,
+      "r2_arcsinh_tc": 0.6657444974954208
+    },
+    "Borocarbides": {
+      "n_train": 16118,
+      "n_test": 345,
+      "msle_tc": 0.4343240640965433,
+      "r2_arcsinh_tc": 0.12790870272726707
+    },
+    "Cuprates": {
+      "n_train": 10537,
+      "n_test": 5926,
+      "msle_tc": 0.32046955214295464,
+      "r2_arcsinh_tc": 0.32875816638897537
+    },
+    "Elemental Superconductors": {
+      "n_train": 16399,
+      "n_test": 64,
+      "msle_tc": 0.42259201507440275,
+      "r2_arcsinh_tc": 0.38445532014660233
+    },
+    "Iron-based": {
+      "n_train": 14691,
+      "n_test": 1772,
+      "msle_tc": 2.2597063450869976,
+      "r2_arcsinh_tc": -2.4713835317820516
+    },
+    "Organic Superconductors": {
+      "n_train": 16388,
+      "n_test": 75,
+      "msle_tc": 0.7208323996021699,
+      "r2_arcsinh_tc": 0.3352058695459058
+    },
+    "Other": {
+      "n_train": 9735,
+      "n_test": 6728,
+      "msle_tc": 0.7473021982379531,
+      "r2_arcsinh_tc": -0.20022057009437377
+    }
+  }
+}
