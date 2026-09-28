@@ -30,6 +30,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from config import DATA_DIR, OUTPUT_DIR
+from tracking import start_run, file_md5, record_provenance
 from build_screening_pipeline import classify_supercon_category
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -61,47 +62,58 @@ def main():
     shortlist = pd.read_csv(SHORTLIST_CSV)
     sc = pd.read_csv(SUPERCON_RAW, usecols=["formula"])
 
-    log.info("Flagging rediscoveries (candidates that are already-known superconductors) ...")
-    sc_norm_set = set(sc["formula"].apply(normalize).dropna())
-    sc_elemset_set = set(sc["formula"].apply(elemset).dropna())
+    config = {"input_md5": {p.name: file_md5(p) for p in (SHORTLIST_CSV, CLF_METRICS_JSON, SUPERCON_RAW)},
+              "n_candidates": len(shortlist)}
+    with start_run("annotate-shortlist", "inference", config, tags=["funnel", "shortlist"],
+                   notes="Flags rediscoveries and attaches per-candidate family + reliability to the top-500.") as run:
+        log.info("Flagging rediscoveries (candidates that are already-known superconductors) ...")
+        sc_norm_set = set(sc["formula"].apply(normalize).dropna())
+        sc_elemset_set = set(sc["formula"].apply(elemset).dropna())
 
-    shortlist["norm_formula"] = shortlist["formula"].apply(normalize)
-    shortlist["already_known_supercon"] = shortlist["norm_formula"].isin(sc_norm_set)
+        shortlist["already_known_supercon"] = shortlist["formula"].apply(normalize).isin(sc_norm_set)
+        shortlist["same_element_set_as_known_SC"] = shortlist["formula"].apply(elemset).isin(sc_elemset_set)
+        log.info(f"  exact rediscoveries (reduced formula): {shortlist['already_known_supercon'].sum()}")
+        log.info(f"  same element combination as a known SC: {shortlist['same_element_set_as_known_SC'].sum()}")
 
-    shortlist["elemset"] = shortlist["formula"].apply(elemset)
-    shortlist["same_element_set_as_known_SC"] = shortlist["elemset"].isin(sc_elemset_set)
-    shortlist = shortlist.drop(columns=["norm_formula", "elemset"])
+        log.info("Tagging inferred family + LOFO reliability ...")
+        lofo = json.loads(CLF_METRICS_JSON.read_text())["leave_one_family_out"]
+        shortlist["inferred_family"] = shortlist["formula"].apply(classify_supercon_category)
 
-    log.info(f"  exact rediscoveries (reduced formula): {shortlist['already_known_supercon'].sum()}")
-    log.info(f"  same element combination as a known SC: {shortlist['same_element_set_as_known_SC'].sum()}")
+        def reliability(fam):
+            r = lofo.get(fam)
+            return pd.Series({
+                "family_lofo_roc_auc": r["roc_auc"] if r else None,
+                "family_lofo_pr_auc": r["pr_auc"] if r else None,
+            })
 
-    log.info("Tagging inferred family + LOFO reliability ...")
-    lofo = json.loads(CLF_METRICS_JSON.read_text())["leave_one_family_out"]
-    shortlist["inferred_family"] = shortlist["formula"].apply(classify_supercon_category)
+        shortlist = pd.concat([shortlist, shortlist["inferred_family"].apply(reliability)], axis=1)
+        no_lofo = shortlist["family_lofo_roc_auc"].isna()
+        if no_lofo.any():
+            log.info(f"  {no_lofo.sum()} candidates have no measured reliability "
+                     f"(family too small to evaluate, e.g. Hydrogen-rich) -- flagged, not silently omitted.")
 
-    def reliability(fam):
-        r = lofo.get(fam)
-        return pd.Series({
-            "family_lofo_roc_auc": r["roc_auc"] if r else None,
-            "family_lofo_pr_auc": r["pr_auc"] if r else None,
-        })
+        shortlist.to_csv(OUT_CSV, index=False)
+        log.info(f"Saved -> {OUT_CSV}")
+        log.info("\nFamily distribution across top-500:\n" + shortlist["inferred_family"].value_counts().to_string())
+        log.info("\nTop 20:\n" + shortlist[["rank", "formula", "funnel_score", "inferred_family",
+                                              "family_lofo_roc_auc", "already_known_supercon"]].head(20).to_string(index=False))
 
-    shortlist = pd.concat([shortlist, shortlist["inferred_family"].apply(reliability)], axis=1)
+        log_outputs(run, shortlist)
+        record_provenance("annotate_shortlist", run, [OUT_CSV])
 
-    no_lofo = shortlist["family_lofo_roc_auc"].isna()
-    if no_lofo.any():
-        log.info(f"  {no_lofo.sum()} candidates have no measured reliability "
-                 f"(family too small to evaluate, e.g. Hydrogen-rich) -- flagged, not silently omitted.")
 
-    shortlist.to_csv(OUT_CSV, index=False)
-    log.info(f"Saved -> {OUT_CSV}")
-
-    log.info("\nFamily distribution across top-500:")
-    log.info(shortlist["inferred_family"].value_counts().to_string())
-
-    log.info("\nTop 20:")
-    log.info(shortlist[["rank", "formula", "funnel_score", "inferred_family",
-                         "family_lofo_roc_auc", "already_known_supercon"]].head(20).to_string(index=False))
+def log_outputs(run, shortlist):
+    import wandb
+    run.summary["top500/exact_rediscoveries"] = int(shortlist["already_known_supercon"].sum())
+    run.summary["top500/same_element_set_as_known_SC"] = int(shortlist["same_element_set_as_known_SC"].sum())
+    run.summary["top500/no_reliability_available"] = int(shortlist["family_lofo_roc_auc"].isna().sum())
+    for fam, n in shortlist["inferred_family"].value_counts().items():
+        run.summary[f"top500/family/{fam.replace(' ', '_')}"] = int(n)
+    bands = pd.cut(shortlist["family_lofo_roc_auc"], bins=[0, 0.6, 0.75, 0.9, 1.0],
+                   labels=["low<=0.60", "moderate", "good", "high>0.90"])
+    for band, n in bands.value_counts().items():
+        run.summary[f"top500/reliability_band/{band}"] = int(n)
+    run.log({"top20": wandb.Table(dataframe=shortlist.head(20))})
 
 
 if __name__ == "__main__":

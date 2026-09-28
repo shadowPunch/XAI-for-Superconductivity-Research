@@ -62,6 +62,7 @@ from config import (
     FEAT_DATASET_PKL, PROC_DIR, OUTPUT_DIR, DATA_DIR,
     MAGPIE_PRESET, TEST_SIZE, RANDOM_SEED, XGBOOST_PARAMS,
 )
+from tracking import start_run, file_md5, record_provenance, line_chart
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
@@ -207,7 +208,7 @@ def fit_score_classifier(X_train, y_train, X_test, y_test):
     from sklearn.metrics import roc_auc_score, average_precision_score
 
     clf = XGBClassifier(**XGBOOST_PARAMS)
-    clf.fit(X_train, y_train, verbose=False)
+    clf.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_test, y_test)], verbose=False)
     y_prob = clf.predict_proba(X_test)[:, 1]
     res = {
         "n_train": int(len(y_train)), "n_test": int(len(y_test)),
@@ -236,7 +237,7 @@ def evaluate_classifier(labeled, feature_cols):
         X_all, y_all, test_size=TEST_SIZE, random_state=RANDOM_SEED, stratify=y_all
     )
     log.info("[classifier] random split (headline number, not representative of novel-candidate performance) ...")
-    random_res, final_clf = fit_score_classifier(X_train, y_train, X_test, y_test)
+    random_res, random_clf = fit_score_classifier(X_train, y_train, X_test, y_test)
     results["random_split"] = random_res
     log.info(json.dumps(random_res, indent=2))
 
@@ -269,26 +270,39 @@ def evaluate_classifier(labeled, feature_cols):
     # split) -- deployment should use every scrap of confirmed data available.
     from xgboost import XGBClassifier
     final_clf = XGBClassifier(**XGBOOST_PARAMS)
-    final_clf.fit(X_all, y_all, verbose=False)
+    final_clf.fit(X_all, y_all, eval_set=[(X_all, y_all)], verbose=False)
 
     with open(CLF_MODEL_PKL, "wb") as f:
         pickle.dump(final_clf, f)
     CLF_METRICS_JSON.write_text(json.dumps(results, indent=2))
     log.info(f"Saved classifier -> {CLF_MODEL_PKL}, metrics -> {CLF_METRICS_JSON}")
-    return final_clf, results
+    curves = {"random_split": training_curves(random_clf),
+              "final_fit": {"train_logloss": final_clf.evals_result()["validation_0"]["logloss"]}}
+    return final_clf, results, curves
 
 
 # ── Step 4: regressor funnel stage (Tc, positives only) ──────────────────────
 
-def fit_score_regressor(X_train, y_train, X_test, y_test, tc_test):
+def make_regressor():
     from xgboost import XGBRegressor
-    from sklearn.metrics import mean_squared_log_error, r2_score
-
-    reg = XGBRegressor(
+    return XGBRegressor(
         n_estimators=500, max_depth=6, learning_rate=0.05,
         subsample=0.8, colsample_bytree=0.8, random_state=RANDOM_SEED, n_jobs=-1,
     )
-    reg.fit(X_train, y_train)
+
+
+def training_curves(model):
+    """Per-round train / held-out metric from an XGBoost model fit with two eval sets."""
+    ev = model.evals_result()
+    metric = next(iter(ev["validation_0"]))
+    return {f"train_{metric}": ev["validation_0"][metric], f"held_out_{metric}": ev["validation_1"][metric]}
+
+
+def fit_score_regressor(X_train, y_train, X_test, y_test, tc_test):
+    from sklearn.metrics import mean_squared_log_error, r2_score
+
+    reg = make_regressor()
+    reg.fit(X_train, y_train, eval_set=[(X_train, y_train), (X_test, y_test)], verbose=False)
     pred_tc = np.clip(np.sinh(reg.predict(X_test)), 0, None)
     msle = float(mean_squared_log_error(tc_test.clip(min=1e-6), pred_tc.clip(min=1e-6)))
     r2 = float(r2_score(y_test, reg.predict(X_test)))
@@ -311,7 +325,7 @@ def evaluate_regressor(labeled, feature_cols):
 
     results = {}
     idx_train, idx_test = train_test_split(np.arange(len(y_all)), test_size=TEST_SIZE, random_state=RANDOM_SEED)
-    random_res, final_reg = fit_score_regressor(
+    random_res, random_reg = fit_score_regressor(
         X_all[idx_train], y_all[idx_train], X_all[idx_test], y_all[idx_test], tc_all[idx_test]
     )
     results["random_split"] = random_res
@@ -330,18 +344,48 @@ def evaluate_regressor(labeled, feature_cols):
 
     results["leave_one_family_out"] = lofo_results
 
-    from xgboost import XGBRegressor
-    final_reg = XGBRegressor(
-        n_estimators=500, max_depth=6, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8, random_state=RANDOM_SEED, n_jobs=-1,
-    )
-    final_reg.fit(X_all, y_all)
+    final_reg = make_regressor()
+    final_reg.fit(X_all, y_all, eval_set=[(X_all, y_all)], verbose=False)
 
     with open(REG_MODEL_PKL, "wb") as f:
         pickle.dump(final_reg, f)
     REG_METRICS_JSON.write_text(json.dumps(results, indent=2))
     log.info(f"Saved regressor -> {REG_MODEL_PKL}, metrics -> {REG_METRICS_JSON}")
-    return final_reg
+    curves = {"random_split": training_curves(random_reg),
+              "final_fit": {"train_rmse": final_reg.evals_result()["validation_0"]["rmse"]}}
+    return final_reg, results, curves
+
+
+def flat(name):
+    return name.replace(" ", "_")
+
+
+def log_results(run, clf_res, clf_curves, reg_res, reg_curves):
+    import wandb
+    run.summary["clf/random/roc_auc"] = clf_res["random_split"]["roc_auc"]
+    run.summary["clf/random/pr_auc"] = clf_res["random_split"]["pr_auc"]
+    run.summary["reg/random/msle_tc"] = reg_res["random_split"]["msle_tc"]
+    run.summary["reg/random/r2"] = reg_res["random_split"]["r2_arcsinh_tc"]
+    for fam, r in clf_res["leave_one_family_out"].items():
+        run.summary[f"clf/lofo/{flat(fam)}/roc_auc"] = r["roc_auc"]
+        run.summary[f"clf/lofo/{flat(fam)}/pr_auc"] = r["pr_auc"]
+    for fam, r in reg_res["leave_one_family_out"].items():
+        run.summary[f"reg/lofo/{flat(fam)}/msle_tc"] = r["msle_tc"]
+        run.summary[f"reg/lofo/{flat(fam)}/r2"] = r["r2_arcsinh_tc"]
+
+    def lofo_table(res):
+        rows = [{"family": fam, **{k: v for k, v in r.items() if not isinstance(v, dict)}}
+                for fam, r in res["leave_one_family_out"].items()]
+        return wandb.Table(dataframe=pd.DataFrame(rows))
+
+    run.log({
+        "clf/lofo_table": lofo_table(clf_res),
+        "reg/lofo_table": lofo_table(reg_res),
+        "clf/random_split_curves": line_chart("Classifier: random-split logloss", clf_curves["random_split"]),
+        "clf/final_fit_curve": line_chart("Classifier: final full-data fit", clf_curves["final_fit"]),
+        "reg/random_split_curves": line_chart("Regressor: random-split rmse", reg_curves["random_split"]),
+        "reg/final_fit_curve": line_chart("Regressor: final full-data fit", reg_curves["final_fit"]),
+    })
 
 
 def main():
@@ -351,18 +395,32 @@ def main():
         sys.exit(1)
 
     feature_cols = SELECTED_FEATURES_FILE.read_text().splitlines()
-    neg_feat_df = featurize_confirmed_negatives()
-    labeled, pool = build_datasets(neg_feat_df, feature_cols)
+    config = {
+        "seed": RANDOM_SEED, "test_size": TEST_SIZE, "xgboost_params": XGBOOST_PARAMS,
+        "regressor_params": make_regressor().get_params(), "features": feature_cols,
+        "data_md5": {p.name: file_md5(p) for p in (SUPERCON_RAW, DSC_CSV, DATA_DIR / "mp_stable_non_sc.csv", FEAT_DATASET_PKL)},
+    }
+    notes = "Trains the shipped screening funnel (classifier + Tc regressor) with leave-one-family-out validation."
 
-    log.info("=" * 60)
-    log.info("STAGE 1: CLASSIFIER (is this composition SC-like at all?)")
-    log.info("=" * 60)
-    evaluate_classifier(labeled, feature_cols)
+    with start_run("build-funnel", "train", config, tags=["funnel", "shipped-model"], notes=notes) as run:
+        neg_feat_df = featurize_confirmed_negatives()
+        labeled, pool = build_datasets(neg_feat_df, feature_cols)
+        run.config.update({"n_labeled": len(labeled), "n_positive": int((labeled.label == 1).sum()),
+                           "n_confirmed_negative": int((labeled.label == 0).sum()), "n_unlabeled_pool": len(pool)})
 
-    log.info("=" * 60)
-    log.info("STAGE 2: REGRESSOR (predicted Tc, ranks survivors)")
-    log.info("=" * 60)
-    evaluate_regressor(labeled, feature_cols)
+        log.info("=" * 60)
+        log.info("STAGE 1: CLASSIFIER (is this composition SC-like at all?)")
+        log.info("=" * 60)
+        _, clf_res, clf_curves = evaluate_classifier(labeled, feature_cols)
+
+        log.info("=" * 60)
+        log.info("STAGE 2: REGRESSOR (predicted Tc, ranks survivors)")
+        log.info("=" * 60)
+        _, reg_res, reg_curves = evaluate_regressor(labeled, feature_cols)
+
+        log_results(run, clf_res, clf_curves, reg_res, reg_curves)
+        record_provenance("build_screening_pipeline", run,
+                          [CLF_MODEL_PKL, REG_MODEL_PKL, CLF_METRICS_JSON, REG_METRICS_JSON])
 
 
 if __name__ == "__main__":

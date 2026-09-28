@@ -60,6 +60,21 @@
       "rank": 6,
       "mean_abs_shap": 0.28954270482063293,
       "value_shap_corr": 0.881650352155329
+    },
+    "original labels | full": {
+      "rank": 2,
+      "mean_abs_shap": 0.5032715201377869,
+      "value_shap_corr": 0.786461281321488
+    },
+    "original labels | oxygen-free": {
+      "rank": 14,
+      "mean_abs_shap": 0.15056562423706055,
+      "value_shap_corr": 0.6930639169556309
+    },
+    "original labels | oxide-only": {
+      "rank": 1,
+      "mean_abs_shap": 1.7372249364852905,
+      "value_shap_corr": 0.7749226853642833
     }
   },
   "retrained_subsets": {
@@ -130,6 +145,77 @@
         "MagpieData range Number",
         "MagpieData avg_dev SpaceGroupNumber",
         "MagpieData avg_dev GSvolume_pa"
+      ]
+    }
+  },
+  "original_label_subsets": {
+    "full": {
+      "n": 78482,
+      "n_pos": 16463,
+      "n_neg": 62019,
+      "roc_auc": 0.9907638858554115,
+      "target": {
+        "rank": 2,
+        "mean_abs_shap": 0.5032715201377869,
+        "value_shap_corr": 0.786461281321488
+      },
+      "top_features": [
+        "MagpieData range Electronegativity",
+        "MagpieData mean CovalentRadius",
+        "MagpieData mean MeltingT",
+        "MagpieData mean NfUnfilled",
+        "MagpieData mean Electronegativity",
+        "MagpieData mean NdValence",
+        "MagpieData mode MeltingT",
+        "MagpieData avg_dev Column",
+        "MagpieData avg_dev Electronegativity",
+        "MagpieData avg_dev NsValence"
+      ]
+    },
+    "oxygen-free": {
+      "n": 45173,
+      "n_pos": 7948,
+      "n_neg": 37225,
+      "roc_auc": 0.9748321246306741,
+      "target": {
+        "rank": 14,
+        "mean_abs_shap": 0.15056562423706055,
+        "value_shap_corr": 0.6930639169556309
+      },
+      "top_features": [
+        "MagpieData mean NfUnfilled",
+        "MagpieData mode MeltingT",
+        "MagpieData mean MeltingT",
+        "MagpieData mode MendeleevNumber",
+        "MagpieData avg_dev Electronegativity",
+        "MagpieData mean NUnfilled",
+        "MagpieData mean NpValence",
+        "MagpieData mean Electronegativity",
+        "MagpieData maximum MeltingT",
+        "MagpieData avg_dev GSmagmom"
+      ]
+    },
+    "oxide-only": {
+      "n": 33309,
+      "n_pos": 8515,
+      "n_neg": 24794,
+      "roc_auc": 0.9988158749457888,
+      "target": {
+        "rank": 1,
+        "mean_abs_shap": 1.7372249364852905,
+        "value_shap_corr": 0.7749226853642833
+      },
+      "top_features": [
+        "MagpieData mean CovalentRadius",
+        "MagpieData mean NdValence",
+        "MagpieData avg_dev Column",
+        "MagpieData maximum NUnfilled",
+        "MagpieData avg_dev NsValence",
+        "MagpieData mean GSbandgap",
+        "MagpieData avg_dev Row",
+        "MagpieData mean NpUnfilled",
+        "MagpieData mean NUnfilled",
+        "MagpieData avg_dev NdValence"
       ]
     }
   }

@@ -1,0 +1,90 @@
+{
+  "table_one_reproduced": {
+    "accuracy": 0.9644540705822398,
+    "roc_auc": 0.9906309297680403,
+    "Non-SC": {
+      "precision": 0.9746794871794872,
+      "recall": 0.9804933096888603,
+      "f1-score": 0.9775777545607972,
+      "support": 6203.0
+    },
+    "Supercon": {
+      "precision": 0.9247980111870727,
+      "recall": 0.9040097205346294,
+      "f1-score": 0.9142857142857143,
+      "support": 1646.0
+    }
+  },
+  "table_one_reported": {
+    "accuracy": 0.9525,
+    "roc_auc": 0.9886,
+    "Non-SC": {
+      "precision": 0.98,
+      "recall": 0.96,
+      "f1": 0.97,
+      "support": 6202
+    },
+    "Supercon": {
+      "precision": 0.85,
+      "recall": 0.93,
+      "f1": 0.89,
+      "support": 1652
+    }
+  },
+  "split": {
+    "train": 62784,
+    "val": 7849,
+    "test": 7849
+  },
+  "shap_top10": [
+    "MagpieData range Electronegativity",
+    "MagpieData mean CovalentRadius",
+    "MagpieData mean MeltingT",
+    "MagpieData mean NfUnfilled",
+    "MagpieData mean Electronegativity",
+    "MagpieData mode MeltingT",
+    "MagpieData mean NdValence",
+    "MagpieData avg_dev Column",
+    "MagpieData avg_dev Electronegativity",
+    "MagpieData mean NpValence"
+  ],
+  "report_fig1_features_in_selected_40": [
+    "MagpieData avg_dev Column",
+    "MagpieData avg_dev Electronegativity",
+    "MagpieData avg_dev GSmagmom",
+    "MagpieData avg_dev NValence",
+    "MagpieData avg_dev NpValence",
+    "MagpieData avg_dev NsValence",
+    "MagpieData maximum GSvolume_pa",
+    "MagpieData mean CovalentRadius",
+    "MagpieData mean Electronegativity",
+    "MagpieData mean MeltingT",
+    "MagpieData mean NUnfilled",
+    "MagpieData mean NdValence",
+    "MagpieData mean NfUnfilled",
+    "MagpieData mean NpValence",
+    "MagpieData mode MeltingT",
+    "MagpieData range Electronegativity",
+    "MagpieData range MeltingT",
+    "MagpieData range MendeleevNumber"
+  ],
+  "report_fig1_features_missing_from_selected_40": [
+    "MagpieData avg_dev GSbandgap",
+    "MagpieData maximum Electronegativity"
+  ],
+  "report_fig1_overlap_with_reproduced_top20": [
+    "MagpieData avg_dev Column",
+    "MagpieData avg_dev Electronegativity",
+    "MagpieData avg_dev NsValence",
+    "MagpieData maximum GSvolume_pa",
+    "MagpieData mean CovalentRadius",
+    "MagpieData mean Electronegativity",
+    "MagpieData mean MeltingT",
+    "MagpieData mean NUnfilled",
+    "MagpieData mean NdValence",
+    "MagpieData mean NfUnfilled",
+    "MagpieData mean NpValence",
+    "MagpieData mode MeltingT",
+    "MagpieData range Electronegativity"
+  ]
+}

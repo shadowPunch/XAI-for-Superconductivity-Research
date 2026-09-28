@@ -12,11 +12,14 @@ does that, and checks whether the feature is doing general work or is scoped
 to oxide chemistry (oxygen has a very small covalent radius, and cuprates,
 which are not BCS superconductors, dominate the positives).
 
-Three views of "does this feature matter outside oxides?":
+Four views of "does this feature matter outside oxides?":
   1. shipped model, SHAP restricted to oxygen-free / oxide-only rows
      (no retraining -- explains exactly the model that produces the shortlist)
-  2. models retrained on the full / oxygen-free / oxide-only subsets
-  3. how well oxygen fraction alone separates the classes
+  2. models retrained on the full / oxygen-free / oxide-only subsets of the
+     confirmed-label data
+  3. the same retrains on the ORIGINAL labels (unlabeled-as-negative), so the
+     original study's oxide-scoped result is reproducible from this repo
+  4. how well oxygen fraction alone separates the classes
 
 Caveats: SHAP for the shipped models is computed on the data they were fit
 on (global importance, not a generalization claim), and the shipped models
@@ -42,8 +45,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from config import PROC_DIR, OUTPUT_DIR, RANDOM_SEED, TEST_SIZE, XGBOOST_PARAMS
-from tracking import start_run, file_md5
+from config import FEAT_DATASET_PKL, PROC_DIR, OUTPUT_DIR, RANDOM_SEED, TEST_SIZE, XGBOOST_PARAMS
+from tracking import start_run, file_md5, record_provenance, line_chart
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
@@ -208,6 +211,18 @@ def main():
             log.info(f"Retraining on '{tag}' subset ({int(mask.sum()):,} rows) ...")
             retrained[tag], curves[tag] = retrain_and_explain(X[mask], y[mask], feature_cols)
             regimes[f"retrained | {tag}"] = retrained[tag]["target"]
+            curves[f"funnel/{tag}"] = curves.pop(tag)
+
+        original = pd.read_pickle(FEAT_DATASET_PKL)
+        original["o_frac"] = original["formula"].apply(oxygen_fraction)
+        original = original.dropna(subset=["o_frac"]).reset_index(drop=True)
+        orig_has_o = (original["o_frac"] > 0).values
+        X_orig, y_orig = original[feature_cols].values, original["label"].values
+        original_retrained = {}
+        for tag, mask in [("full", np.ones(len(y_orig), bool)), ("oxygen-free", ~orig_has_o), ("oxide-only", orig_has_o)]:
+            log.info(f"Retraining on ORIGINAL labels, '{tag}' subset ({int(mask.sum()):,} rows) ...")
+            original_retrained[tag], curves[f"original/{tag}"] = retrain_and_explain(X_orig[mask], y_orig[mask], feature_cols)
+            regimes[f"original labels | {tag}"] = original_retrained[tag]["target"]
 
         # 4. Oxygen alone, and the feature's overlap with oxygen
         oxygen_only_auc = float(roc_auc_score(y, labeled["o_frac"]))
@@ -224,6 +239,7 @@ def main():
             "shipped_regressor_top10": reg_stats.head(10)["feature"].tolist(),
             "target_by_regime": regimes,
             "retrained_subsets": retrained,
+            "original_label_subsets": original_retrained,
         }
         OUT_JSON.write_text(json.dumps(results, indent=2))
         plot_summary(clf_stats, reg_stats, regimes)
@@ -236,17 +252,17 @@ def main():
             run.summary[f"target/{key}/value_shap_corr"] = r["value_shap_corr"]
         for tag, r in retrained.items():
             run.summary[f"retrained/{tag}/roc_auc"] = r["roc_auc"]
+        for tag, r in original_retrained.items():
+            run.summary[f"original_labels/{tag}/roc_auc"] = r["roc_auc"]
         run.summary["oxygen_fraction_alone_roc_auc"] = oxygen_only_auc
         run.summary["corr_feature_vs_oxygen_fraction"] = corr_with_o
         run.log({
             "shap/classifier_features": wandb.Table(dataframe=clf_stats),
             "shap/regressor_features": wandb.Table(dataframe=reg_stats),
-            "val_logloss_curves": wandb.plot.line_series(
-                xs=list(range(len(next(iter(curves.values()))))), ys=list(curves.values()),
-                keys=[f"retrained/{t}" for t in curves], title="Held-out logloss per boosting round",
-                xname="boosting round"),
+            "val_logloss_curves": line_chart("Held-out logloss per boosting round", curves),
             "explain_funnel_plot": wandb.Image(str(OUT_PLOT)),
         })
+        record_provenance("explain_funnel", run, [OUT_JSON, OUT_CLF_CSV, OUT_REG_CSV, OUT_PLOT])
 
         log.info(json.dumps({"target_by_regime": regimes,
                              "oxygen_fraction_alone_roc_auc": oxygen_only_auc,

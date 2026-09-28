@@ -67,7 +67,11 @@ Skip `feature_selection.py` to reproduce the shipped results: the committed
 `data/processed/selected_features.txt` is the feature list the models were
 trained with. Re-running it is not bit-reproducible (a re-run overlapped 38 of
 the 40 committed features), so it would slightly change every downstream number.
-Featurization itself is exact (verified: max abs difference 0 on a 300-row check).
+Featurization itself is exact (verified: max abs difference 0 on a 300-row check). A full rebuild
+featurizes four noble-gas formulas (Ar, He, HeSiO2, Ne) that the original run dropped, so it has
+78,482 rows rather than 78,478; the shortlist and funnel metrics are unaffected. Refits of
+multithreaded XGBoost (original study, SHAP retrains) vary slightly between runs -- ROC-AUC in the
+third decimal, lower SHAP ranks by about one place; the shipped funnel outputs reproduce exactly.
 
 `data/download_data.py` (needs `MP_API_KEY`) only re-fetches
 `mp_stable_non_sc.csv`, which is already committed.
@@ -110,27 +114,54 @@ Outputs: `outputs/explain_funnel.json`, `explain_funnel_{classifier,regressor}_s
   the data the models were fit on, so it describes what they use, not how well
   they generalize (see the leave-one-family-out table above for that).
 
-Full discussion, including the earlier classifier where the feature *did* look
-oxide-scoped: [`PROJECT_REPORT.md`](PROJECT_REPORT.md) section 7.
+The same script also retrains on the original study's labels, where the
+feature *does* look oxide-scoped (rank 2 -> 13-14 without oxygen), so the contrast
+between the two label designs is reproducible. Full discussion:
+[`PROJECT_REPORT.md`](PROJECT_REPORT.md) section 7.
+
+## Reproducing the original study
+
+`path_a_classical/reproduce_original_study.py` re-runs the original project's
+composition pipeline as designed -- unlabeled-as-negative labels, the 40 Magpie
+features, XGBoost, stratified 80/10/10 split -- and writes its Table I and SHAP
+figure next to the Final Report's numbers (`outputs/original_study.json`):
+
+| | Final Report | Reproduced |
+|---|---|---|
+| ROC-AUC | 0.9886 | 0.991 |
+| Accuracy | 0.9525 | 0.964 |
+
+It measures a different question from the funnel (random-split discrimination of
+literature superconductors from arbitrary stable materials, not generalization to
+unseen families); both are kept so neither half of the project is lost. Details and
+the small differences from the printed report: [`PROJECT_REPORT.md`](PROJECT_REPORT.md) section 1.3.
 
 ## Experiment tracking
 
 Scripts that train, evaluate or explain a model log to Weights & Biases
 (project `xai-superconductivity-screening`) through `tracking.py`: config,
 feature list, seeds, data/model hashes and code version, plus metrics, tables,
-curves and plots -- never raw data. `explain_funnel.py` is tracked today.
+curves and plots -- never raw data. Tracked: `build_screening_pipeline.py`,
+`run_screening.py`, `annotate_shortlist.py`, `explain_funnel.py` and
+`reproduce_original_study.py`.
+
+`outputs/provenance.json` names the W&B run that produced each shipped file, with
+md5s. Its `code_version` is the base commit plus `+dirty`: these runs executed from
+the working tree before the commit that introduced the tracking, so the dirty state
+is exactly that commit's changes.
 
 Run offline with `SCREENING_WANDB=0`. If W&B is enabled but unreachable or
 unauthenticated the script stops instead of running untracked.
 
-Known gap: `build_screening_pipeline.py`, `run_screening.py` and
-`annotate_shortlist.py` are not yet tracked, and the shipped models were produced
-by an untracked run (their md5s are recorded in the explain run's config).
 
 ## Key outputs
 
 - `outputs/screening_funnel_classifier.json` / `regressor.json` — the
   honest leave-one-family-out numbers, per family.
+- `outputs/original_study.json` — the original study's Table I and SHAP ranking,
+  reproduced next to the Final Report's numbers.
+- `outputs/explain_funnel.json` / `.png` — SHAP explanations of the shipped funnel.
+- `outputs/provenance.json` — which W&B run produced each shipped file.
 - `outputs/candidate_shortlist.csv` — the full ~62,000-candidate pool,
   ranked by funnel score (P(superconductor) x predicted Tc).
 - `outputs/candidate_shortlist_top500_annotated.csv` — **the deliverable**:

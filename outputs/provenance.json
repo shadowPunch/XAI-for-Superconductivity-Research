@@ -1,0 +1,51 @@
+{
+  "reproduce_original_study": {
+    "wandb_run_id": "h466vile",
+    "wandb_run_url": "https://wandb.ai/nithish232005-iit-roorkee/xai-superconductivity-screening/runs/h466vile",
+    "code_version": "a887cff+dirty",
+    "outputs_md5": {
+      "original_study.json": "a5c2d3ca7923a6221f6708d8d90d49ae",
+      "original_study_shap.csv": "90e6cac0b7222d6042b6da51fc72ac07",
+      "original_study_shap.png": "67468912748b61ed5f33cc2c2b76c1e2"
+    }
+  },
+  "build_screening_pipeline": {
+    "wandb_run_id": "5igfrx62",
+    "wandb_run_url": "https://wandb.ai/nithish232005-iit-roorkee/xai-superconductivity-screening/runs/5igfrx62",
+    "code_version": "a887cff+dirty",
+    "outputs_md5": {
+      "screening_funnel_classifier.pkl": "483857b3d84f97274a6f18475d8f18fe",
+      "screening_funnel_regressor.pkl": "246b97d9d0b48522a8fff5699dc5abf4",
+      "screening_funnel_classifier.json": "b0070ba5b01bd5fcc43fa8733fe8bf50",
+      "screening_funnel_regressor.json": "5ce9474de6f32e4dae384eef7cf58b66"
+    }
+  },
+  "run_screening": {
+    "wandb_run_id": "5hlrbj6i",
+    "wandb_run_url": "https://wandb.ai/nithish232005-iit-roorkee/xai-superconductivity-screening/runs/5hlrbj6i",
+    "code_version": "a887cff+dirty",
+    "outputs_md5": {
+      "candidate_shortlist.csv": "0d031da30e9a458403f91500dd3a52ca",
+      "candidate_shortlist_top500.csv": "2c720cdd019695c3b98c484b6ebe371a"
+    }
+  },
+  "annotate_shortlist": {
+    "wandb_run_id": "vq4h5c7o",
+    "wandb_run_url": "https://wandb.ai/nithish232005-iit-roorkee/xai-superconductivity-screening/runs/vq4h5c7o",
+    "code_version": "a887cff+dirty",
+    "outputs_md5": {
+      "candidate_shortlist_top500_annotated.csv": "616053e96913ada53f0dc1f23a011ee8"
+    }
+  },
+  "explain_funnel": {
+    "wandb_run_id": "58lszl8z",
+    "wandb_run_url": "https://wandb.ai/nithish232005-iit-roorkee/xai-superconductivity-screening/runs/58lszl8z",
+    "code_version": "a887cff+dirty",
+    "outputs_md5": {
+      "explain_funnel.json": "3c8539876eae2a037a769e0a1729d0c4",
+      "explain_funnel_classifier_shap.csv": "f79e0efb93d1645c36dd4a5e22bb4a2f",
+      "explain_funnel_regressor_shap.csv": "c143a58c1c9d28d018355b50f72a7ddc",
+      "explain_funnel.png": "79833f3ed1395dca573eff49b0568d1d"
+    }
+  }
+}
