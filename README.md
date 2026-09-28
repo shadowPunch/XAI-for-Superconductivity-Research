@@ -1,4 +1,4 @@
-# Superconductor Screening Funnel
+# Superconductor Screening
 
 A two-stage composition-based funnel for shortlisting candidate superconductors,
 built to minimize false negatives at a given screening budget rather than to
