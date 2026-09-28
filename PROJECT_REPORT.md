@@ -43,6 +43,10 @@ The headline result reproduces closely (ROC-AUC within 0.003; test-set support w
 
 **Interpretation as reported.** SHAP on this model gave three design rules: (1) *low mean covalent radius* was the top predictor, read as smaller atoms → stiffer lattices → higher phonon frequencies, consistent with BCS theory; (2) a *high range of electronegativity* was the next strongest, read as superconductors being chemically contrasting compounds rather than simple alloys; (3) *low mean d-valence electron count* was strongly predictive, read as high d-electron counts being associated with magnetism. The reproduction agrees on the broad picture: 13 of the report's 20 Figure 1 features appear in the reproduced top 20 (13–14 across repeated runs), with range of electronegativity, mean covalent radius, mean melting temperature, mean electronegativity and mean f-orbital vacancy among the top five. How well each *rule* holds up under further testing is the subject of §7.
 
+![SHAP top-20 features of the original-methodology classifier](outputs/original_study_shap.png)
+
+*Figure 1. Mean |SHAP| of the top 20 features of the original-methodology classifier (random split, unlabeled-as-negative labels), reproduced by `reproduce_original_study.py`. The same feature families lead as in Figure 1 of the Final Report; the exact order differs slightly.*
+
 **Original future work.** The report proposed (a) screening millions of hypothetical materials in OQMD with the XGBoost model, (b) a hybrid pipeline in which XGBoost filters formulas and a GNN then analyzes the 3D structure of the shortlist, and (c) pre-training the GNN on formation energy before fine-tuning. This revision realizes (a) in spirit by screening the ~62,000-material Materials Project pool (§4.4; OQMD was not used), tests (c) partially with frozen CHGNet embeddings (§5.2), and finds no support for the GNN stage in (b) (§5).
 
 *Reproducibility notes.* A fresh rebuild from the raw CSVs featurizes four noble-gas formulas (Ar, He, HeSiO₂, Ne) that the original featurization run had dropped, giving 78,482 rows rather than 78,478; this adds four negatives to the screening pool and does not change the shortlist or any funnel metric. Models refit on this dataset use multithreaded XGBoost and are not bit-reproducible: ROC-AUC and accuracy vary in the third decimal between runs, and lower-ranked SHAP positions can swap between near-tied features. Quantities quoted from such refits below carry that tolerance; the shipped funnel models and their outputs are reproduced exactly.
@@ -127,6 +131,8 @@ This path does not appear in the deployed pipeline. It is summarized here becaus
 ### 5.1 What was built
 A Crystal Graph Convolutional Neural Network (CGCNN; Xie & Grossman, *Phys. Rev. Lett.* 2018), where atoms are nodes (one-hot atomic number) and bonds are edges (Gaussian-expanded distance, 5 Å cutoff), trained for binary superconductor classification, interpreted post-hoc with GNNExplainer.
 
+**As originally reported.** Table II of the Final Report gave ROC-AUC 0.9412 and accuracy 0.94, with non-superconductor precision/recall 0.99/0.95 but superconductor precision of only 0.04 at recall 0.86 (F1 0.08). The report itself read this as a useful pattern-recognition tool but an inefficient screening tool, and read a GNNExplainer run on YBCO — highest importance on Cu and O, almost none on Y and Ba — as validation of Cu–O-plane physics. The subsections below test both readings.
+
 ### 5.2 What was wrong, and what it revealed once fixed
 
 **The reported result was not reproducible.** The GNNExplainer script imported the wrong model class entirely (a never-trained `CGCNN`, when the actual checkpoint was a different, four-layer `ImprovedCGCNN` architecture) and called it with an incompatible signature. GNNExplainer had never successfully run; the "Cu-O plane" figure in the original report was labeled "(Simulated)".
@@ -161,7 +167,7 @@ The composition funnel in this report is a legitimate but considerably shallower
 
 ## 7. Explainability: What Held Up and What Didn't
 
-**SHAP (Path A).** Two different classifiers have been explained, and they do not agree, so every result below is labeled by the model it came from. The *original-methodology* classifier uses unlabeled-as-negative labels (§1.3); the *shipped* funnel classifier uses confirmed labels (§3). Both are examined by `path_a_classical/explain_funnel.py` (W&B run `58lszl8z`), which retrains on the original labels for the first group of rows below and explains the shipped models directly for the second.
+**SHAP (Path A).** Two different classifiers have been explained, and they do not agree, so every result below is labeled by the model it came from. The *original-methodology* classifier uses unlabeled-as-negative labels (§1.3); the *shipped* funnel classifier uses confirmed labels (§3). Both are examined by `path_a_classical/explain_funnel.py` (W&B run `3ykf1x5d`), which retrains on the original labels for the first group of rows below and explains the shipped models directly for the second.
 
 The original report's top design rule was "low mean covalent radius predicts superconductivity, via BCS phonon stiffness". Testing whether that feature is oxide-scoped (oxygen has a very small covalent radius, and cuprates dominate the positives):
 
@@ -177,6 +183,10 @@ The original report's top design rule was "low mean covalent radius predicts sup
 | retrained on oxide-only | 6 | +0.88 |
 
 (Every row is reproduced by `explain_funnel.py`; ranges reflect run-to-run variation of the refit models (§1.3), while the shipped-model rows are exactly reproducible. The "original labels" rows and the "retrained" rows fit a fresh classifier on each subset and explain its held-out split; the "shipped" rows slice the SHAP values of the deployed classifier without retraining.)
+
+![SHAP explanations of the shipped screening funnel](outputs/explain_funnel.png)
+
+*Figure 2. Left and centre: mean |SHAP| of the top 15 features of the shipped classifier and regressor, with mean covalent radius highlighted in the classifier. Right: the rank of mean covalent radius by model and chemistry subset (blue: shipped classifier, SHAP sliced by subset; green: classifiers retrained on each subset of the confirmed-label data; orange: classifiers retrained on the original labels). Only ranks are compared across models, because |SHAP| scales differ between them.*
 
 - **The oxide-scoping finding does not carry over to the shipped model.** With the original labels the feature collapsed from #2 to #13–14 without oxygen. On the shipped model it is #6 overall and, if anything, *more* important outside oxides (#4 and #3) than inside them (#8 and #6). The earlier result was a property of that label design (negatives = generic stable materials), not a general property of the feature.
 - **The sign is consistently opposite to the original claim.** In every row above, a *higher* mean covalent radius pushes toward "superconductor" (positive correlation), not lower as the BCS-stiffness narrative requires. The narrative is unsupported by either model. Caveat: a Pearson correlation is a crude summary of a possibly non-monotonic SHAP dependence; the feature also correlates −0.66 with oxygen fraction, while oxygen fraction alone separates the classes only weakly (ROC-AUC 0.59).

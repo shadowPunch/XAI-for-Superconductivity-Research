@@ -100,6 +100,10 @@ rule" (low mean covalent radius => superconductor):
 python path_a_classical/explain_funnel.py
 ```
 
+![SHAP explanations of the shipped funnel: top features of the classifier and regressor, and where mean covalent radius ranks by model and subset](outputs/explain_funnel.png)
+
+*Left/centre: top SHAP features of the shipped classifier and regressor. Right: rank of mean covalent radius under the original labels (orange), retrained on confirmed labels (green) and in the shipped model (blue).*
+
 Outputs: `outputs/explain_funnel.json`, `explain_funnel_{classifier,regressor}_shap.csv`,
 `explain_funnel.png`. Findings on the shipped model:
 
@@ -130,6 +134,10 @@ figure next to the Final Report's numbers (`outputs/original_study.json`):
 |---|---|---|
 | ROC-AUC | 0.9886 | 0.991 |
 | Accuracy | 0.9525 | 0.964 |
+
+![SHAP top-20 features of the original-methodology classifier](outputs/original_study_shap.png)
+
+*SHAP importance in the original-methodology model (compare Figure 1 of the Final Report).*
 
 It measures a different question from the funnel (random-split discrimination of
 literature superconductors from arbitrary stable materials, not generalization to

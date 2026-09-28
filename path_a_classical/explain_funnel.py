@@ -63,6 +63,7 @@ OUT_PLOT = OUTPUT_DIR / "explain_funnel.png"
 
 TARGET_FEATURE = "MagpieData mean CovalentRadius"
 TOP_N = 15
+GROUP_COLORS = {"original labels": "#dd8452", "retrained": "#55a868", "shipped": "#4c72b0"}
 
 
 def oxygen_fraction(formula: str) -> float:
@@ -127,7 +128,7 @@ def retrain_and_explain(X, y, feature_cols):
 
 
 def plot_summary(clf_stats, reg_stats, regimes):
-    fig, axes = plt.subplots(1, 3, figsize=(17, 5.5))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5.5))
 
     for ax, stats, title in [
         (axes[0], clf_stats, "Shipped classifier: top features"),
@@ -140,16 +141,18 @@ def plot_summary(clf_stats, reg_stats, regimes):
         ax.set_title(title, fontsize=10)
         ax.tick_params(axis="y", labelsize=8)
 
-    names = list(regimes)
+    # Rank (not mean |SHAP|) is compared across models: |SHAP| scales differ between
+    # models, so only the rank is meaningful across the regimes.
+    names = list(regimes)[::-1]
+    ranks = [regimes[n]["rank"] for n in names]
     ax = axes[2]
-    ax.bar(range(len(names)), [regimes[n]["mean_abs_shap"] for n in names], color="#c44e52")
-    for i, n in enumerate(names):
-        ax.annotate(f"#{regimes[n]['rank']}", (i, regimes[n]["mean_abs_shap"]),
-                    ha="center", va="bottom", fontsize=9)
-    ax.set_xticks(range(len(names)))
-    ax.set_xticklabels([n.replace(" | ", "\n") for n in names], fontsize=7)
-    ax.set_ylabel("mean |SHAP| of mean covalent radius")
-    ax.set_title("Covalent radius across chemistry subsets\n(label = importance rank)", fontsize=10)
+    ax.barh(range(len(names)), ranks, color=[GROUP_COLORS[n.split(" | ")[0]] for n in names])
+    ax.set_yticks(range(len(names)))
+    ax.set_yticklabels([n.replace(" | ", ": ") for n in names], fontsize=8)
+    for i, r in enumerate(ranks):
+        ax.annotate(f"#{r}", (r, i), xytext=(3, 0), textcoords="offset points", va="center", fontsize=9)
+    ax.set_xlabel("rank of mean covalent radius (1 = most important)")
+    ax.set_title("Where mean covalent radius ranks, by model and subset", fontsize=10)
 
     fig.tight_layout()
     fig.savefig(OUT_PLOT, dpi=150)
