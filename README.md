@@ -86,6 +86,47 @@ python path_a_classical/run_screening.py               # score the pool
 python path_a_classical/annotate_shortlist.py           # flag + contextualize
 ```
 
+## Explainability
+
+`path_a_classical/explain_funnel.py` explains the shipped classifier and
+regressor with SHAP and stress-tests the original project's headline "design
+rule" (low mean covalent radius => superconductor):
+
+```bash
+python path_a_classical/explain_funnel.py
+```
+
+Outputs: `outputs/explain_funnel.json`, `explain_funnel_{classifier,regressor}_shap.csv`,
+`explain_funnel.png`. Findings on the shipped model:
+
+- The funnel relies mostly on **chemical contrast** -- range of electronegativity
+  is the top feature of both stages, followed by the range of Mendeleev number,
+  atomic number and melting temperature.
+- Mean covalent radius is only **rank 6** (not the top feature), is **not**
+  oxide-specific on this model, and a *higher* value pushes toward "superconductor" --
+  the opposite sign to the original BCS-stiffness explanation.
+- These are associations with a label that separates superconductors from
+  literature-tested near-misses, not evidence of a mechanism. SHAP is computed on
+  the data the models were fit on, so it describes what they use, not how well
+  they generalize (see the leave-one-family-out table above for that).
+
+Full discussion, including the earlier classifier where the feature *did* look
+oxide-scoped: [`PROJECT_REPORT.md`](PROJECT_REPORT.md) section 7.
+
+## Experiment tracking
+
+Scripts that train, evaluate or explain a model log to Weights & Biases
+(project `xai-superconductivity-screening`) through `tracking.py`: config,
+feature list, seeds, data/model hashes and code version, plus metrics, tables,
+curves and plots -- never raw data. `explain_funnel.py` is tracked today.
+
+Run offline with `SCREENING_WANDB=0`. If W&B is enabled but unreachable or
+unauthenticated the script stops instead of running untracked.
+
+Known gap: `build_screening_pipeline.py`, `run_screening.py` and
+`annotate_shortlist.py` are not yet tracked, and the shipped models were produced
+by an untracked run (their md5s are recorded in the explain run's config).
+
 ## Key outputs
 
 - `outputs/screening_funnel_classifier.json` / `regressor.json` — the

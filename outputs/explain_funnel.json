@@ -1,0 +1,136 @@
+{
+  "target_feature": "MagpieData mean CovalentRadius",
+  "share_with_oxygen": {
+    "positives": 0.5172204336998117,
+    "confirmed_negatives": 0.2681818181818182
+  },
+  "oxygen_fraction_alone_roc_auc": 0.5931739838094239,
+  "corr_feature_vs_oxygen_fraction": -0.6591091574831188,
+  "shipped_classifier_top10": [
+    "MagpieData range Electronegativity",
+    "MagpieData range MendeleevNumber",
+    "MagpieData range Number",
+    "MagpieData maximum GSvolume_pa",
+    "MagpieData range MeltingT",
+    "MagpieData mean CovalentRadius",
+    "MagpieData mean NfUnfilled",
+    "MagpieData avg_dev MendeleevNumber",
+    "MagpieData avg_dev NsValence",
+    "MagpieData mode MeltingT"
+  ],
+  "shipped_regressor_top10": [
+    "MagpieData range Electronegativity",
+    "MagpieData mean NUnfilled",
+    "MagpieData range MendeleevNumber",
+    "MagpieData avg_dev Column",
+    "MagpieData avg_dev GSvolume_pa",
+    "MagpieData avg_dev GSmagmom",
+    "MagpieData avg_dev NsValence",
+    "MagpieData range MeltingT",
+    "MagpieData mean NdValence",
+    "MagpieData mean NValence"
+  ],
+  "target_by_regime": {
+    "shipped | all": {
+      "rank": 6,
+      "mean_abs_shap": 0.22554618120193481,
+      "value_shap_corr": 0.8425922014531994
+    },
+    "shipped | oxygen-free": {
+      "rank": 4,
+      "mean_abs_shap": 0.2625978887081146,
+      "value_shap_corr": 0.765907652512607
+    },
+    "shipped | oxide-only": {
+      "rank": 8,
+      "mean_abs_shap": 0.18746869266033173,
+      "value_shap_corr": 0.908637102517042
+    },
+    "retrained | full": {
+      "rank": 6,
+      "mean_abs_shap": 0.22987160086631775,
+      "value_shap_corr": 0.8699802916019559
+    },
+    "retrained | oxygen-free": {
+      "rank": 3,
+      "mean_abs_shap": 0.29047882556915283,
+      "value_shap_corr": 0.8103103810461725
+    },
+    "retrained | oxide-only": {
+      "rank": 6,
+      "mean_abs_shap": 0.28954270482063293,
+      "value_shap_corr": 0.881650352155329
+    }
+  },
+  "retrained_subsets": {
+    "full": {
+      "n": 18223,
+      "n_pos": 16463,
+      "n_neg": 1760,
+      "roc_auc": 0.9594959154385383,
+      "target": {
+        "rank": 6,
+        "mean_abs_shap": 0.22987160086631775,
+        "value_shap_corr": 0.8699802916019559
+      },
+      "top_features": [
+        "MagpieData range Electronegativity",
+        "MagpieData range MendeleevNumber",
+        "MagpieData range Number",
+        "MagpieData maximum GSvolume_pa",
+        "MagpieData range MeltingT",
+        "MagpieData mean CovalentRadius",
+        "MagpieData mean NfUnfilled",
+        "MagpieData avg_dev NsValence",
+        "MagpieData avg_dev MendeleevNumber",
+        "MagpieData maximum NUnfilled"
+      ]
+    },
+    "oxygen-free": {
+      "n": 9236,
+      "n_pos": 7948,
+      "n_neg": 1288,
+      "roc_auc": 0.926312710253035,
+      "target": {
+        "rank": 3,
+        "mean_abs_shap": 0.29047882556915283,
+        "value_shap_corr": 0.8103103810461725
+      },
+      "top_features": [
+        "MagpieData range Electronegativity",
+        "MagpieData mean NfUnfilled",
+        "MagpieData mean CovalentRadius",
+        "MagpieData range MeltingT",
+        "MagpieData avg_dev MendeleevNumber",
+        "MagpieData avg_dev Row",
+        "MagpieData mean NValence",
+        "MagpieData range Number",
+        "MagpieData avg_dev Electronegativity",
+        "MagpieData maximum GSvolume_pa"
+      ]
+    },
+    "oxide-only": {
+      "n": 8987,
+      "n_pos": 8515,
+      "n_neg": 472,
+      "roc_auc": 0.971044351213665,
+      "target": {
+        "rank": 6,
+        "mean_abs_shap": 0.28954270482063293,
+        "value_shap_corr": 0.881650352155329
+      },
+      "top_features": [
+        "MagpieData mean NUnfilled",
+        "MagpieData mean NpValence",
+        "MagpieData avg_dev MeltingT",
+        "MagpieData mean MeltingT",
+        "MagpieData mean NpUnfilled",
+        "MagpieData mean CovalentRadius",
+        "MagpieData mean Electronegativity",
+        "MagpieData range Number",
+        "MagpieData avg_dev SpaceGroupNumber",
+        "MagpieData avg_dev GSvolume_pa"
+      ]
+    }
+  }
+}

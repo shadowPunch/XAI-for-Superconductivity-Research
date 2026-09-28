@@ -5,3 +5,6 @@ __pycache__/
 
 # Regenerable intermediates (rebuilt from data/raw/ by the steps in the README)
 data/processed/*.pkl
+
+# Local W&B run files (runs are synced to the W&B project)
+wandb/
